@@ -2,18 +2,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtGui import QAction
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtGui import QAction, QIntValidator
 from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
     QLabel,
+    QLineEdit,
     QMainWindow,
     QMenu,
     QMessageBox,
     QSplitter,
     QToolBar,
 )
-from PySide6.QtCore import QPoint, Qt
 
 from app.dialogs import (
     CoordinateTagDialog,
@@ -55,6 +56,7 @@ class MainWindow(QMainWindow):
         self.store = JsonProjectStore()
         self.current_project_path: Path | None = None
         self.current_tool = TOOL_SELECT
+        self.current_page_count = 0
         self.pending_segment_node_id: str | None = None
         self.pending_dimension_node_id: str | None = None
 
@@ -87,23 +89,35 @@ class MainWindow(QMainWindow):
         self.zoom_out_action = QAction("Zoom Out", self)
         self.fit_page_action = QAction("Fit Page", self)
 
-        for action in [
-            self.open_pdf_action,
-            self.save_project_action,
-            self.load_project_action,
-            self.previous_page_action,
-            self.next_page_action,
-            self.zoom_in_action,
-            self.zoom_out_action,
-            self.fit_page_action,
-        ]:
-            toolbar.addAction(action)
+        toolbar.addAction(self.open_pdf_action)
+        toolbar.addAction(self.save_project_action)
+        toolbar.addAction(self.load_project_action)
+        toolbar.addSeparator()
+        toolbar.addAction(self.previous_page_action)
+        toolbar.addWidget(QLabel("Page"))
+
+        self.page_number_input = QLineEdit()
+        self.page_number_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.page_number_input.setFixedWidth(58)
+        self.page_number_input.setValidator(QIntValidator(1, 999999, self))
+        toolbar.addWidget(self.page_number_input)
+
+        self.page_count_label = QLabel("/ 0")
+        self.page_count_label.setMinimumWidth(48)
+        toolbar.addWidget(self.page_count_label)
+        toolbar.addAction(self.next_page_action)
+
+        toolbar.addSeparator()
+        toolbar.addAction(self.zoom_in_action)
+        toolbar.addAction(self.zoom_out_action)
+        toolbar.addAction(self.fit_page_action)
 
         toolbar.addSeparator()
         self.current_tool_label = QLabel()
         self.current_tool_label.setMinimumWidth(220)
         toolbar.addWidget(self.current_tool_label)
         self._sync_tool_label()
+        self._sync_page_controls(0, 0)
 
     def _connect_signals(self) -> None:
         self.open_pdf_action.triggered.connect(self.open_pdf)
@@ -114,6 +128,7 @@ class MainWindow(QMainWindow):
         self.zoom_in_action.triggered.connect(self.viewer.zoom_in)
         self.zoom_out_action.triggered.connect(self.viewer.zoom_out)
         self.fit_page_action.triggered.connect(self.viewer.fit_page)
+        self.page_number_input.returnPressed.connect(self._jump_to_typed_page)
 
         self.viewer.mouse_pdf_position_changed.connect(self._mouse_moved_on_pdf)
         self.viewer.pdf_clicked.connect(self._pdf_clicked)
@@ -191,9 +206,11 @@ class MainWindow(QMainWindow):
                 self._show_error("PDF load failed", str(exc))
                 self.pdf_document.close()
                 self.viewer.clear_document()
+                self._sync_page_controls(0, 0)
         else:
             self.pdf_document.close()
             self.viewer.clear_document()
+            self._sync_page_controls(0, 0)
 
         self._clear_pending()
         self._refresh_entities()
@@ -262,10 +279,31 @@ class MainWindow(QMainWindow):
         )
 
     def _page_changed(self, page_number: int, page_count: int) -> None:
+        self._sync_page_controls(page_number, page_count)
         self.statusBar().showMessage(
             f"Page {page_number} of {page_count} | Tool: {self.current_tool}",
             4000,
         )
+
+    def _jump_to_typed_page(self) -> None:
+        if not self.pdf_document.is_open or self.current_page_count <= 0:
+            return
+
+        requested_text = self.page_number_input.text().strip()
+        if not requested_text:
+            self._sync_page_controls(self.viewer.current_page_number(), self.current_page_count)
+            return
+
+        requested_page = int(requested_text)
+        page_number = max(1, min(requested_page, self.current_page_count))
+        if page_number != requested_page:
+            self.statusBar().showMessage(
+                f"Page {requested_page} is outside this PDF. Jumped to page {page_number}.",
+                5000,
+            )
+
+        self.viewer.set_current_page(page_number - 1)
+        self.page_number_input.selectAll()
 
     def _pdf_clicked(self, page_number: int, pdf_x: float, pdf_y: float, nearby_text: str) -> None:
         tool = self.current_tool
@@ -576,6 +614,19 @@ class MainWindow(QMainWindow):
 
     def _sync_tool_label(self) -> None:
         self.current_tool_label.setText(f"Tool: {self.current_tool}")
+
+    def _sync_page_controls(self, page_number: int, page_count: int) -> None:
+        self.current_page_count = page_count
+        has_pages = page_count > 0
+
+        self.page_number_input.setEnabled(has_pages)
+        self.previous_page_action.setEnabled(has_pages and page_number > 1)
+        self.next_page_action.setEnabled(has_pages and page_number < page_count)
+
+        self.page_number_input.blockSignals(True)
+        self.page_number_input.setText(str(page_number) if has_pages else "")
+        self.page_number_input.blockSignals(False)
+        self.page_count_label.setText(f"/ {page_count}" if has_pages else "/ 0")
 
     def _show_error(self, title: str, message: str) -> None:
         QMessageBox.critical(self, title, message)
