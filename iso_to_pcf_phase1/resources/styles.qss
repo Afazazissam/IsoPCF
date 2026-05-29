@@ -1,0 +1,45 @@
+QMainWindow {
+    background: #1f2329;
+}
+
+QToolBar {
+    background: #f6f7f9;
+    border-bottom: 1px solid #cfd5dd;
+    spacing: 6px;
+    padding: 6px;
+}
+
+QToolButton {
+    padding: 5px 8px;
+}
+
+QComboBox,
+QLineEdit,
+QPlainTextEdit,
+QTreeWidget {
+    background: #ffffff;
+    border: 1px solid #c8d0da;
+    border-radius: 4px;
+    padding: 3px;
+}
+
+QTreeWidget {
+    alternate-background-color: #f5f7fa;
+}
+
+QHeaderView::section {
+    background: #e9edf2;
+    border: 0;
+    border-right: 1px solid #c8d0da;
+    padding: 5px;
+    font-weight: 600;
+}
+
+QLabel {
+    color: #26313f;
+}
+
+QStatusBar {
+    background: #f6f7f9;
+    color: #26313f;
+}
