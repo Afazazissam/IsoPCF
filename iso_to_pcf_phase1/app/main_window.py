@@ -27,6 +27,7 @@ from app.dialogs import (
 )
 from app.entity_panel import EntityPanel
 from app.pdf_viewer import PdfViewer
+from app.preview_3d_window import Preview3DWindow
 from app.tool_panel import (
     TOOL_ADD_COORDINATE_TAG,
     TOOL_ADD_DIMENSION,
@@ -39,6 +40,7 @@ from app.tool_panel import (
     TOOL_SELECT,
     TOOLS,
 )
+from core.geometry_3d_builder import Geometry3DBuilder
 from core.pdf_document import PdfDocument
 from core.reconstruction_manager import ReconstructionManager
 from models.project import Project
@@ -57,6 +59,7 @@ class MainWindow(QMainWindow):
         self.current_project_path: Path | None = None
         self.current_tool = TOOL_SELECT
         self.current_page_count = 0
+        self.preview_windows: list[Preview3DWindow] = []
         self.pending_segment_node_id: str | None = None
         self.pending_dimension_node_id: str | None = None
 
@@ -88,6 +91,7 @@ class MainWindow(QMainWindow):
         self.zoom_in_action = QAction("Zoom In", self)
         self.zoom_out_action = QAction("Zoom Out", self)
         self.fit_page_action = QAction("Fit Page", self)
+        self.generate_3d_preview_action = QAction("Generate 3D Preview", self)
 
         toolbar.addAction(self.open_pdf_action)
         toolbar.addAction(self.save_project_action)
@@ -113,6 +117,9 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self.fit_page_action)
 
         toolbar.addSeparator()
+        toolbar.addAction(self.generate_3d_preview_action)
+
+        toolbar.addSeparator()
         self.current_tool_label = QLabel()
         self.current_tool_label.setMinimumWidth(220)
         toolbar.addWidget(self.current_tool_label)
@@ -128,6 +135,7 @@ class MainWindow(QMainWindow):
         self.zoom_in_action.triggered.connect(self.viewer.zoom_in)
         self.zoom_out_action.triggered.connect(self.viewer.zoom_out)
         self.fit_page_action.triggered.connect(self.viewer.fit_page)
+        self.generate_3d_preview_action.triggered.connect(self.generate_3d_preview)
         self.page_number_input.returnPressed.connect(self._jump_to_typed_page)
 
         self.viewer.mouse_pdf_position_changed.connect(self._mouse_moved_on_pdf)
@@ -304,6 +312,24 @@ class MainWindow(QMainWindow):
 
         self.viewer.set_current_page(page_number - 1)
         self.page_number_input.selectAll()
+
+    def generate_3d_preview(self) -> None:
+        geometry = Geometry3DBuilder(self.manager.project).build()
+        preview_window = Preview3DWindow(geometry, self)
+        preview_window.destroyed.connect(
+            lambda *_args, window=preview_window: self._forget_preview_window(window)
+        )
+        self.preview_windows.append(preview_window)
+        preview_window.show()
+
+        warning_count = len(geometry.get("warnings", []))
+        if warning_count:
+            self.statusBar().showMessage(
+                f"3D preview generated with {warning_count} warning(s).",
+                6000,
+            )
+        else:
+            self.statusBar().showMessage("3D preview generated.", 6000)
 
     def _pdf_clicked(self, page_number: int, pdf_x: float, pdf_y: float, nearby_text: str) -> None:
         tool = self.current_tool
@@ -523,6 +549,7 @@ class MainWindow(QMainWindow):
             value=values["value"],
             unit=str(values["unit"]),
             dimension_kind=str(values["dimension_kind"]),
+            direction=str(values["direction"]),
             source_text=str(values["source_text"]),
             page_number=page_number,
             notes=str(values["notes"]),
@@ -627,6 +654,10 @@ class MainWindow(QMainWindow):
         self.page_number_input.setText(str(page_number) if has_pages else "")
         self.page_number_input.blockSignals(False)
         self.page_count_label.setText(f"/ {page_count}" if has_pages else "/ 0")
+
+    def _forget_preview_window(self, window: Preview3DWindow) -> None:
+        if window in self.preview_windows:
+            self.preview_windows.remove(window)
 
     def _show_error(self, title: str, message: str) -> None:
         QMessageBox.critical(self, title, message)

@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from models.dimension import DIMENSION_KINDS
+from models.dimension import DIMENSION_KINDS, DIRECTION_VALUES
 from models.elbow import RADIUS_TYPES
 from models.node import NODE_ROLES
 from models.tee import TEE_TYPES
@@ -214,12 +214,15 @@ class DimensionDialog(FormDialog):
         self.unit = self.line_edit("mm")
         self.kind = QComboBox()
         self.kind.addItems(DIMENSION_KINDS)
+        self.direction = QComboBox()
+        self.direction.addItems(DIRECTION_VALUES)
         self.source_text = self.notes_edit(source_text)
         self.notes = self.notes_edit()
 
         self.form.addRow("Value", self.value)
         self.form.addRow("Unit", self.unit)
         self.form.addRow("Dimension kind", self.kind)
+        self.form.addRow("3D direction", self.direction)
         self.form.addRow("Source text", self.source_text)
         self.form.addRow("Notes", self.notes)
 
@@ -228,6 +231,7 @@ class DimensionDialog(FormDialog):
             "value": optional_float(self.value.text()),
             "unit": self.unit.text().strip() or "mm",
             "dimension_kind": self.kind.currentText(),
+            "direction": self.direction.currentText(),
             "source_text": self.source_text.toPlainText().strip(),
             "notes": self.notes.toPlainText().strip(),
         }

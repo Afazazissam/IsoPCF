@@ -180,6 +180,7 @@ class ReconstructionManager:
         dimension_kind: str,
         source_text: str,
         page_number: int,
+        direction: str = "UNKNOWN",
         notes: str = "",
     ) -> Dimension:
         dimension = Dimension(
@@ -189,6 +190,7 @@ class ReconstructionManager:
             value=value,
             unit=unit,
             dimension_kind=dimension_kind,
+            direction=direction,
             source_text=source_text,
             page_number=page_number,
             notes=notes,

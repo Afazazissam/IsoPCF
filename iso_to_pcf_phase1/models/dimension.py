@@ -16,6 +16,16 @@ DIMENSION_KINDS = [
     "unknown",
 ]
 
+DIRECTION_VALUES = [
+    "EAST",
+    "WEST",
+    "NORTH",
+    "SOUTH",
+    "UP",
+    "DOWN",
+    "UNKNOWN",
+]
+
 
 @dataclass
 class Dimension:
@@ -26,6 +36,7 @@ class Dimension:
     value: float | None = None
     unit: str = "mm"
     dimension_kind: str = "linear"
+    direction: str = "UNKNOWN"
     source_text: str = ""
     page_number: int = 1
     manual_verified: bool = True

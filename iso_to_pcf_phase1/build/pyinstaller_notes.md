@@ -13,6 +13,7 @@ pyinstaller --name IsoToPcfPhase1 --onefile --windowed --add-data "resources/sty
 
 - PySide6
 - PyMuPDF
+- matplotlib
 
 ## Notes
 

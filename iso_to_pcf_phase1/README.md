@@ -18,6 +18,7 @@ python main.py
 - Add nodes, pipe segments, elbows, tees, supports, dimension constraints, and coordinate/elevation tags.
 - Choose the active reconstruction tool from the PDF viewer right-click menu.
 - Draw PDF overlays from stored PDF coordinates.
+- Generate a matplotlib 3D stick-model preview from directional dimensions.
 - Save and load reconstruction projects as JSON.
 
 ## Data Model

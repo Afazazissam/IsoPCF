@@ -71,8 +71,9 @@ class Project:
         )
         project.pages = [PageInfo.from_dict(item) for item in data.get("pages", [])]
         project.nodes = [Node.from_dict(item) for item in data.get("nodes", [])]
+        segment_data = data.get("pipe_segments", data.get("segments", []))
         project.pipe_segments = [
-            PipeSegment.from_dict(item) for item in data.get("pipe_segments", [])
+            PipeSegment.from_dict(_normalize_segment_data(item)) for item in segment_data
         ]
         project.elbows = [Elbow.from_dict(item) for item in data.get("elbows", [])]
         project.tees = [Tee.from_dict(item) for item in data.get("tees", [])]
@@ -107,3 +108,14 @@ class Project:
             "coordinate_tags": [tag.to_dict() for tag in self.coordinate_tags],
             "metadata": self.metadata,
         }
+
+
+def _normalize_segment_data(data: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(data)
+    if "from_node" not in normalized and "from" in normalized:
+        normalized["from_node"] = normalized["from"]
+    if "to_node" not in normalized and "to" in normalized:
+        normalized["to_node"] = normalized["to"]
+    if normalized.get("type") == "pipe":
+        normalized["type"] = "pipe_segment"
+    return normalized
